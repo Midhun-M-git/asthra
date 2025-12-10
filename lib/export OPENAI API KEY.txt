@@ -1,10 +1,7 @@
-
-
-# Set your OpenAI key (no spaces around =)
-export OPENAI_API_KEY="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"
-
-# Optional: choose model (defaults to gpt-4o-mini already)
-export OPENAI_MODEL="gpt-4o-mini"
-
-# Run the backend
-uvicorn app:app --reload
+export AI_PROVIDER=openai
+export OPENAI_API_KEY="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 "
+export OPENAI_MODEL="gpt-4o-mini"          # or your chosen model
+export OPENAI_BASE_URL="https://openrouter.ai/api/v1"
+# If OpenRouter requires:
+# export OPENAI_HTTP_REFERER="https://yourapp.com"
+# export OPENAI_X_TITLE="Your App Name"

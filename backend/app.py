@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import textwrap
+import traceback
 import zipfile
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -23,6 +24,7 @@ OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL")
 OPENAI_HTTP_REFERER = os.getenv("OPENAI_HTTP_REFERER")
 OPENAI_X_TITLE = os.getenv("OPENAI_X_TITLE")
 AI_STATUS_MSG = "AI not initialized"
+AI_DEBUG = os.getenv("AI_DEBUG", "").lower() in {"1", "true", "yes", "on"}
 
 client = None
 bedrock_client = None
@@ -202,6 +204,41 @@ def _fallback_plan(message: str, file: UploadFile | None = None) -> Dict[str, An
     }
 
 
+def _greeting_plan(message: str) -> Dict[str, Any]:
+    """Friendly response when the user just says hi/hello without a task."""
+    return {
+        "title": "Welcome to ASTHRA",
+        "summary": "Hi there! Tell me about your project, repo URL, or the docs you need.",
+        "sections": [
+            {
+                "heading": "How to proceed",
+                "bullets": [
+                    "Describe your project or paste a GitHub repo URL.",
+                    "Mention what you want: report PDF, slides, patent draft, certificates.",
+                    "Say 'create documents' or provide requirements to generate outputs.",
+                ],
+            }
+        ],
+        "claims": ["Interactive assistant awaiting your project brief."],
+        "certificate_note": "Awaiting project details to personalize certificates.",
+    }
+
+
+def _is_greeting(message: str) -> bool:
+    msg = message.strip().lower()
+    # remove trailing punctuation
+    msg = msg.strip(" .,!?:;")
+    greetings = {"hi", "hey", "hello", "hiya", "yo", "sup", "hola"}
+    if msg in greetings:
+        return True
+    if msg.startswith(("hi ", "hey ", "hello ", "hola ")):
+        return True
+    # very short chatter without task words
+    if len(msg.split()) <= 2 and len(msg) <= 8:
+        return True
+    return False
+
+
 def _system_prompt() -> str:
     return (
         "You are an assistant that drafts professional documentation. "
@@ -221,6 +258,8 @@ def _call_ai_plan(message: str) -> Tuple[Dict[str, Any] | None, str | None]:
 
     try:
         if AI_PROVIDER in {"openai", "azure"} and client:
+            if AI_DEBUG:
+                print(f"[AI DEBUG] provider={AI_PROVIDER} model={AI_MODEL} base_url={OPENAI_BASE_URL}")
             response = client.chat.completions.create(
                 model=AI_MODEL,
                 temperature=0.4,
@@ -232,17 +271,23 @@ def _call_ai_plan(message: str) -> Tuple[Dict[str, Any] | None, str | None]:
                 ],
             )
             raw_content = response.choices[0].message.content
-            return json.loads(raw_content), None
+            parsed, err = _parse_json_content(raw_content)
+            return parsed, err
 
         if AI_PROVIDER == "gemini":
+            if AI_DEBUG:
+                print(f"[AI DEBUG] provider=gemini model={AI_MODEL}")
             model = genai.GenerativeModel(AI_MODEL)
             response = model.generate_content(
                 f"{_system_prompt()}\nUser request:\n{message}\nReply with JSON only."
             )
             raw_content = response.text
-            return json.loads(raw_content), None
+            parsed, err = _parse_json_content(raw_content)
+            return parsed, err
 
         if AI_PROVIDER == "bedrock" and bedrock_client:
+            if AI_DEBUG:
+                print(f"[AI DEBUG] provider=bedrock model={AI_MODEL}")
             prompt = {
                 "messages": [
                     {
@@ -265,10 +310,14 @@ def _call_ai_plan(message: str) -> Tuple[Dict[str, Any] | None, str | None]:
             payload = json.loads(result["body"].read())
             # Assume model returns JSON text in first message content
             raw_content = payload["content"][0]["text"]
-            return json.loads(raw_content), None
+            parsed, err = _parse_json_content(raw_content)
+            return parsed, err
 
         return None, f"Unsupported provider or client not initialized: {AI_PROVIDER}"
     except Exception as exc:  # noqa: BLE001
+        if AI_DEBUG:
+            print("[AI DEBUG] exception:", exc)
+            print(traceback.format_exc())
         return None, str(exc)
 
 
@@ -300,6 +349,25 @@ def _normalize_plan(plan: Dict[str, Any], fallback_message: str) -> Dict[str, An
         "claims": claims,
         "certificate_note": certificate_note,
     }
+
+
+def _parse_json_content(raw_content: str) -> Tuple[Dict[str, Any] | None, str | None]:
+    """Parse model text that may include code fences or prefix text."""
+    if not raw_content:
+        return None, "Empty AI response"
+
+    cleaned = raw_content.strip()
+    # Strip common code fences like ```json ... ``` or ``` ... ```
+    for prefix in ("```json", "```"):
+        if cleaned.lower().startswith(prefix):
+            cleaned = cleaned[len(prefix) :].strip()
+    if cleaned.endswith("```"):
+        cleaned = cleaned[:-3].strip()
+
+    try:
+        return json.loads(cleaned), None
+    except json.JSONDecodeError:
+        return None, f"Non-JSON AI response: {cleaned[:200]}"
 
 
 def _wrap_lines(text: str, width: int) -> List[str]:
@@ -442,8 +510,14 @@ async def chat(
     ai_error: str | None = None
     ai_used = False
 
-    plan = _fallback_plan(message, file)
-    if mode == "hybrid":
+    # Greeting-only? Respond interactively without forcing doc generation content.
+    greeting_only = _is_greeting(message)
+    if greeting_only:
+        plan = _greeting_plan(message)
+    else:
+        plan = _fallback_plan(message, file)
+
+    if mode == "hybrid" and not greeting_only:
         ai_plan, ai_error = _call_ai_plan(message)
         if ai_plan:
             plan = _normalize_plan(ai_plan, message)
@@ -477,6 +551,7 @@ async def chat(
                 "mode_requested": mode,
                 "mode_used": "hybrid" if ai_used else "static",
                 "error": ai_error,
+                "debug": AI_STATUS_MSG if AI_DEBUG else None,
             },
         }
     )

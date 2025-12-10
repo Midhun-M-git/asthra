@@ -1,0 +1,25 @@
+# Core server
+fastapi
+uvicorn[standard]
+python-multipart   # for file uploads
+aiofiles           # for serving static files
+openai
+# Optional AI providers
+google-generativeai
+boto3
+# File generation
+reportlab          # for creating PDFs
+fpdf2              # alternative PDF generation
+python-pptx        # for creating PowerPoint slides
+openpyxl           # for Excel files
+docx               # for Word documents (via python-docx)
+
+# Utilities
+requests           # for making HTTP calls if needed
+pydantic           # for data validation (already bundled with FastAPI, but safe to include)
+jinja2             # for templating (e.g., certificates, reports)
+
+# Optional extras
+pandas             # for CSV handling and data analysis
+numpy              # for numerical work if needed
+

@@ -1,0 +1,10 @@
+
+
+# Set your OpenAI key (no spaces around =)
+export OPENAI_API_KEY="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"
+
+# Optional: choose model (defaults to gpt-4o-mini already)
+export OPENAI_MODEL="gpt-4o-mini"
+
+# Run the backend
+uvicorn app:app --reload

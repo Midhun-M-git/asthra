@@ -19,6 +19,9 @@ from reportlab.pdfgen import canvas
 AI_ENABLED = False
 AI_PROVIDER = os.getenv("AI_PROVIDER", "auto").lower()
 AI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL")
+OPENAI_HTTP_REFERER = os.getenv("OPENAI_HTTP_REFERER")
+OPENAI_X_TITLE = os.getenv("OPENAI_X_TITLE")
 AI_STATUS_MSG = "AI not initialized"
 
 client = None
@@ -70,9 +73,22 @@ def _init_ai_provider() -> None:
         if not api_key:
             AI_STATUS_MSG = "OPENAI_API_KEY missing"
             return
-        client = OpenAI(api_key=api_key)
+        default_headers = {}
+        if OPENAI_HTTP_REFERER:
+            default_headers["HTTP-Referer"] = OPENAI_HTTP_REFERER
+        if OPENAI_X_TITLE:
+            default_headers["X-Title"] = OPENAI_X_TITLE
+        client = OpenAI(
+            api_key=api_key,
+            base_url=OPENAI_BASE_URL,
+            default_headers=default_headers or None,
+        )
         AI_ENABLED = True
-        AI_STATUS_MSG = "OpenAI ready"
+        AI_STATUS_MSG = (
+            f"OpenAI ready (base_url={OPENAI_BASE_URL})"
+            if OPENAI_BASE_URL
+            else "OpenAI ready"
+        )
         return
 
     if provider == "azure":

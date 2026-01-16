@@ -1,6 +1,6 @@
-
 import 'package:flutter/material.dart';
-import 'pages/chat_page.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'pages/setup_page.dart';
 
 void main() {
   runApp(const AIDocApp());
@@ -12,13 +12,24 @@ class AIDocApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'ASTHRA',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
         useMaterial3: true,
       ),
-      home: const ChatPage(), // or Chatpage() if that's your class name
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en'),
+        Locale('ml'),
+        Locale('hi'),
+        Locale('es'),
+      ],
+      home: const SetupPage(),
     );
   }
 }
-

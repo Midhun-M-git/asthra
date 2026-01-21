@@ -134,7 +134,29 @@ def _fetch_openrouter_models(only_free=False) -> List[Dict[str, Any]]:
                         "name": m["name"],
                         "is_free": is_free
                     })
-                models.sort(key=lambda x: not x["is_free"])
+                PRIORITY_MODELS = [
+                    "google/gemini-2.0-flash-exp:free",
+                    "google/gemini-2.0-flash-thinking-exp:free",
+                    "meta-llama/llama-3.3-70b-instruct:free",
+                    "google/gemini-exp-1206:free",
+                    "mistralai/mistral-nemo:free",
+                ]
+                
+                def sort_key(x):
+                    # 1. Priority (Lower index = Better)
+                    try:
+                        p_index = PRIORITY_MODELS.index(x["id"])
+                    except ValueError:
+                        p_index = 999
+                    
+                    # 2. Free vs Paid (True=Free first) -> False < True, so we want not is_free for ascending?
+                    # We want Free first? False (0) comes before True (1).
+                    # Actually: not True = False(0). not False = True(1).
+                    # So (0, ...) comes first.
+                    
+                    return (p_index, not x["is_free"], x["name"])
+
+                models.sort(key=sort_key)
                 return models
     except:
         pass
@@ -312,7 +334,11 @@ def _fetch_github_context(url: str) -> str:
 
 
 def _system_prompt() -> str:
-    return """You are an expert technical consultant and documentation specialist. Your goal is to draft a comprehensive, professional, and detailed project report. The output must be a valid JSON object with the following structure:
+    return """You are an expert technical consultant and documentation specialist. Your goal is to draft a comprehensive, professional, and detailed project report. The output must be a valid JSON object.
+
+CRITICAL INSTRUCTION: The 'sections' array MUST contain OBJECTS, not strings. Each object in 'sections' MUST have a 'heading' and a 'bullets' list. Do NOT output sections as a list of strings.
+
+Structure:
 {
   "title": "Project Title",
   "summary": "A detailed executive summary (approx 100-150 words).",
@@ -333,7 +359,9 @@ REQUIREMENTS:
 1. Write in a formal, academic tone.
 2. 'sections' are for the REPORT (Detailed, paragraphs).
 3. 'ppt_slides' are for the PRESENTATION (Concise, bullet points, fewer words).
-4. Respond with JSON ONLY.
+4. Ensure 'sections' is a list of objects with populated 'bullets'.
+5. You MUST provide at least 2 content bullets per section. Empty bullets are invalid.
+6. Respond with JSON ONLY.
 """
 
 
@@ -435,8 +463,13 @@ def _normalize_plan(plan: Dict[str, Any], fallback_message: str) -> Dict[str, An
     summary = plan.get("summary") or f"Generated documentation for: {fallback_message}"
     sections = []
     for section in plan.get("sections", []):
-        heading = section.get("heading") or "Section"
-        bullets = [b.strip() for b in section.get("bullets", []) if str(b).strip()]
+        if isinstance(section, dict):
+            heading = section.get("heading") or "Section"
+            bullets = [b.strip() for b in (section.get("bullets") or []) if str(b).strip()]
+        else:
+            # Fallback if section is malformed (e.g. just a string)
+            heading = str(section)
+            bullets = ["Details pending."]
         sections.append({"heading": heading, "bullets": bullets or ["Details pending."]})
 
     if not sections:
@@ -477,6 +510,7 @@ def _wrap_lines(text: str, width: int) -> List[str]:
 
 
 def _build_report_pdf(plan: Dict[str, Any], path: Path) -> None:
+    print(f"DEBUG: Building PDF w/ sections: {len(plan.get('sections', []))} - Title: {plan.get('title')}")
     doc = BaseDocTemplate(str(path), pagesize=LETTER)
     
     # IEEE Styles
@@ -1316,6 +1350,7 @@ async def chat(
         gh_context = ""
         if gh_url:
             gh_context = _fetch_github_context(gh_url)
+            print(f"DEBUG: Fetched Context Length: {len(gh_context)}")
             message = f"{message}\n\n{gh_context}"
             print(f"Injected GitHub context for {gh_url}")
 
@@ -1327,7 +1362,9 @@ async def chat(
         if eff_provider and eff_key:
              ai_plan, ai_error = _call_ai_plan_dynamic(message, eff_provider, eff_key, eff_model)
              if ai_plan:
+                 print(f"DEBUG: Raw AI Plan: {ai_plan}")
                  plan = _normalize_plan(ai_plan, message)
+                 print(f"DEBUG: Normalized Sections: {plan.get('sections')}")
                  # Add note about GitHub context
                  if gh_url:
                      plan["summary"] += f" (Analyzed GitHub Repo: {gh_url})"

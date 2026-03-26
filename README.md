@@ -96,4 +96,9 @@ We love contributions! Feel free to fork the repo and submit PRs. Let's make AST
 
 ---
 
+## 📜 License
+This project is proprietary. Copyright (c) 2026 Midhun M. All rights reserved. See the [LICENSE](file:///d:/ai_doc_webapp/ai_doc_webapp/LICENSE) file for details.
+
+---
+
 **Developed with ❤️ by the ASTHRA Team**

@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 import requests
 import json
+import csv
+import io
 
 print("--- APP RELOADED: PDF FIXES APPLIED ---")
 import os
@@ -1125,6 +1127,10 @@ async def regenerate(req: RegenerateRequest):
     cert_zip_path = FILES_DIR / "certificates.zip"
 
     try:
+        # Defaults for regenerate
+        docx_tmpl_path = None
+        pptx_tmpl_path = None
+        
         _build_report_pdf(plan, report_path)
         try:
             _build_docx(plan, report_docx_path, template_path=docx_tmpl_path)
@@ -1137,7 +1143,13 @@ async def regenerate(req: RegenerateRequest):
         _build_patent_pdf(plan, message, patent_path)
         _build_certificates_zip(plan, message, cert_zip_path, settings=cert_settings)
         
-        return {"status": "ok", "files": _file_urls(), "plan": plan, "reply": reply_text, "ai": ai_status}
+        return {
+            "status": "ok", 
+            "files": _file_urls(), 
+            "plan": plan, 
+            "reply": "Project regenerated.", 
+            "ai": {"enabled": True, "note": "Regenerated from plan"}
+        }
     except Exception as e:
         traceback.print_exc()
         return JSONResponse({"error": str(e)}, status_code=500)
@@ -1213,110 +1225,23 @@ async def chat(
     cert_opts = {}
     if cert_settings:
         try:
-             cert_opts = json.loads(cert_settings)
+            cert_opts = json.loads(cert_settings)
         except: pass
     
     # Handle CSV
     csv_data = []
-    if file:
+    if file and file.filename.lower().endswith(".csv"):
         try:
             content = await file.read()
-            text = content.decode("utf-8")
-            reader = csv.DictReader(io.StringIO(text))
-            csv_data = [row for row in reader]
-        except Exception as e:
-            print(f"CSV Error: {e}")
-            
-    # AI Logic
-    plan = {
-        "title": "Generated Project",
-        "sections": [],
-        "ppt_slides": [],
-        "claims": [],
-    }
-    
-    reply_text = "I've processed your request."
-    ai_status = {"enabled": False}
-
-    if mode == "hybrid":
-        # ... (Existing AI Logic) ...
-        # (This block is large, keeping it as is in logic but since we are replacing "chat" signature and start)
-        # Wait, I cannot easily replace just the start of function without replacing the whole body if it's small or using replace.
-        # The function body is large. I should use START/END lines carefully or just replace signature if possible.
-        # But I need to add handling for new templates inside body.
-        pass # Placeholder for thought
-        
-    # FETCH AI
-    if mode == "hybrid":
-       # ... (Assume existing AI fetching logic is preserved if I don't touch it)
-       # Actually I should read the full function to do a clean Replace.
-       # Or better: Just replace signature lines.
-       pass 
-
-    # For the Tool Call: I will replace the SIGNATURE and INITIAL PARAMS processing.
-    # And then I need to pass these paths to _build_x.
-    
-    # Save Uploaded Templates
-    # Existing template_file for certs
-    cert_template_path = None
-    if template_file:
-         path = FILES_DIR / "cert_template_bg.png" # OR detect ext
-         # Simplified: use "cert_template_user" + ext
-         # ...
-         pass
-
-    # DOCX Template
-    docx_tmpl_path = None
-    if template_docx:
-        docx_tmpl_path = FILES_DIR / f"user_template_{int(time.time())}.docx"
-        with open(docx_tmpl_path, "wb") as f:
-            f.write(await template_docx.read())
-
-    # PPTX Template
-    pptx_tmpl_path = None
-    if template_pptx:
-        pptx_tmpl_path = FILES_DIR / f"user_template_{int(time.time())}.pptx"
-        with open(pptx_tmpl_path, "wb") as f:
-             f.write(await template_pptx.read())
-
-    # ... AI generation ...
-    
-    # Then calls:
-    # _build_report_pdf(plan, report_path)
-    # _build_docx(plan, report_docx_path, template_path=docx_tmpl_path)
-    # _build_ppt(plan, ppt_path, settings=settings, template_path=pptx_tmpl_path)
-    # _build_certificates_zip(...)
-    
-    # I need to execute 2 replaces or 3.
-    # 1. Update Signature.
-    # 2. Add File saving logic.
-    # 3. Update build calls.
-    
-    # Let's do signature first.
-
-    # ... (existing AI logic) ...
-    # Re-implementing function start to ensure context matches
-    """
-    mode = "static" 
-    mode = "hybrid" (uses passed creds or defaults)
-    """
-    ai_error: str | None = None
-    ai_used = False
-    
-    # Check for CSV uploads 
-    csv_data = []
-    
-    if file:
-        if file.filename.lower().endswith(".csv"):
-            try:
-                content = await file.read()
+            if content:
                 text = content.decode("utf-8")
-                import csv
-                import io
                 f_io = io.StringIO(text)
                 # Check if has header
                 sample = text[:1024]
-                has_header = csv.Sniffer().has_header(sample)
+                try:
+                    has_header = csv.Sniffer().has_header(sample)
+                except:
+                    has_header = False
                 
                 if has_header:
                     f_io.seek(0)
@@ -1329,12 +1254,39 @@ async def chat(
                         parts = line.split(",")
                         if parts and parts[0].strip():
                             csv_data.append({"name": parts[0].strip()})
-                            
-            except Exception as e:
-                print(f"CSV Parsing Error: {e}")
-                csv_data = []
+        except Exception as e:
+            print(f"CSV Parsing Error: {e}")
+            traceback.print_exc()
 
+    # Handle Templates
+    docx_tmpl_path = None
+    if template_docx:
+        docx_tmpl_path = FILES_DIR / f"user_template_{int(time.time())}.docx"
+        with open(docx_tmpl_path, "wb") as f:
+            f.write(await template_docx.read())
+
+    pptx_tmpl_path = None
+    if template_pptx:
+        pptx_tmpl_path = FILES_DIR / f"user_template_{int(time.time())}.pptx"
+        with open(pptx_tmpl_path, "wb") as f:
+            f.write(await template_pptx.read())
+
+    # custom cert template (image)
+    if template_file:
+         try:
+            tmpl_content = await template_file.read()
+            custom_tmpl_path = FILES_DIR / f"custom_template_{template_file.filename}"
+            with open(custom_tmpl_path, "wb") as f:
+                f.write(tmpl_content)
+            if cert_opts:
+                cert_opts["background_image"] = base64.b64encode(tmpl_content).decode("utf-8")
+         except Exception as e:
+            print(f"Template upload failed: {e}")
+
+    ai_error: str | None = None
+    ai_used = False
     is_greet = _is_greeting(message)
+    
     if is_greet:
         plan = _greeting_plan(message)
     else:
@@ -1347,41 +1299,24 @@ async def chat(
         
         # GitHub Context Injection
         gh_url = _extract_github_url(message)
-        gh_context = ""
         if gh_url:
             gh_context = _fetch_github_context(gh_url)
-            print(f"DEBUG: Fetched Context Length: {len(gh_context)}")
             message = f"{message}\n\n{gh_context}"
-            print(f"Injected GitHub context for {gh_url}")
 
         # Language Instruction
         if language and language != "en":
-             message = f"{message}\n\nOUTPUT RULE: Translate all user-facing content (summary, bullets, claims) to {language}. Keep JSON keys (title, sections, heading, bullets, claims) in English.\nINPUT NOTE: If the user input is in Romanized script (e.g., Manglish for Malayalam, Hinglish for Hindi), interpret it as natural language."
-             print(f"Injected Language Instruction: {language}")
+             message = f"{message}\n\nOUTPUT RULE: Translate all user-facing content (summary, bullets, claims) to {language}. Keep JSON keys (title, sections, heading, bullets, claims) in English."
 
         if eff_provider and eff_key:
              ai_plan, ai_error = _call_ai_plan_dynamic(message, eff_provider, eff_key, eff_model)
              if ai_plan:
-                 print(f"DEBUG: Raw AI Plan: {ai_plan}")
                  plan = _normalize_plan(ai_plan, message)
-                 print(f"DEBUG: Normalized Sections: {plan.get('sections')}")
                  # Add note about GitHub context
                  if gh_url:
                      plan["summary"] += f" (Analyzed GitHub Repo: {gh_url})"
                  ai_used = True
         else:
              ai_error = "Missing API Key or Provider configuration"
-
-    # Handle Custom Template
-    custom_tmpl_path = None
-    if template_file:
-        try:
-            tmpl_content = await template_file.read()
-            custom_tmpl_path = FILES_DIR / f"custom_template_{template_file.filename}"
-            with open(custom_tmpl_path, "wb") as f:
-                f.write(tmpl_content)
-        except Exception as e:
-            print(f"Template upload failed: {e}")
 
     file_urls = None
     should_gen_cert = False
@@ -1394,26 +1329,22 @@ async def chat(
 
         _build_report_pdf(plan, report_path)
         try:
-            _build_docx(plan, report_docx_path) # Editable Report
+            _build_docx(plan, report_docx_path, template_path=docx_tmpl_path)
         except Exception as e:
             print(f"DOCX Build Error: {e}")
             
-        _build_ppt(plan, ppt_path, custom_template_path=custom_tmpl_path)
+        _build_ppt(plan, ppt_path, template_path=pptx_tmpl_path)
         _build_patent_pdf(plan, message, patent_path)
         
         # Conditional Certificate Generation
-        # Trigger if CSV is uploaded OR if user text explicitly mentions standard keywords
-        # Also triggers if greeting? No, is_greet handles separately.
-        
         msg_lower = message.lower()
         should_gen_cert = bool(csv_data) or any(k in msg_lower for k in ["certificate", "cert ", "diploma"])
         
         if should_gen_cert:
-            _build_certificates_zip(plan, message, cert_zip_path, data=csv_data)
+            _build_certificates_zip(plan, message, cert_zip_path, data=csv_data, settings=cert_opts)
         
         file_urls = _file_urls()
         if not should_gen_cert:
-             # Remove from response if not generated
              file_urls.pop("certificates", None)
 
     reply_lines = [plan["summary"]]

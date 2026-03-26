@@ -80,7 +80,7 @@ class ApiClient {
       );
     }
 
-    final streamed = await request.send().timeout(const Duration(seconds: 30));
+    final streamed = await request.send().timeout(const Duration(seconds: 300));
     final response = await http.Response.fromStream(streamed);
 
     if (response.statusCode == 200) {
@@ -119,7 +119,7 @@ class ApiClient {
         'ppt_settings': pptSettings,
         'cert_settings': certSettings,
       }),
-    );
+    ).timeout(const Duration(seconds: 300));
     if (response.statusCode == 200) {
       return jsonDecode(response.body) as Map<String, dynamic>;
     }
@@ -144,7 +144,7 @@ class ApiClient {
         'provider': provider,
         'model': model,
       }),
-    );
+    ).timeout(const Duration(seconds: 300));
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       return data['text'] as String;

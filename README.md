@@ -1,104 +1,150 @@
-# 🚀 ASTHRA: The Ultimate AI Document Orchestrator
+# ASTHRA: AI Document Generation and Analysis Ecosystem
+
+<div align="center">
 
 [![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
-[![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white)](https://openai.com)
-[![Google Gemini](https://img.shields.io/badge/Google_Gemini-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white)](https://deepmind.google/technologies/gemini/)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
-**ASTHRA** is a state-of-the-art AI-powered document generation and analysis ecosystem. Whether you're a developer needing instant documentation for a GitHub repo, or a professional looking to mass-generate certificates and presentations, ASTHRA is your specialized digital weapon! 🏹
+**An intelligent document orchestration pipeline pairing cross-platform Flutter client with FastAPI and multi-provider LLM synthesis.**
 
----
-
-## ✨ Key Features that WOW!
-
-### 🤖 **Multi-Model AI Intelligence**
-Don't settle for one! ASTHRA integrates with the world's leading AI engines:
-*   **OpenAI** (GPT-4o, GPT-3.5)
-*   **Google Gemini** (Pro, Flash, Thinking)
-*   **AWS Bedrock** (Claude, Titan)
-*   **OpenRouter** (Llama 3.3, Mistral, and more!)
-
-### 🔗 **GitHub Repository Analysis**
-Simply paste a GitHub URL! ASTHRA deep-dives into your code, understands the architecture, and drafts comprehensive technical reports in seconds.
-
-### 📄 **Format-Flexibility (One-Click Export)**
-Generate professional-grade documents in:
-*   **PDF**: Beautifully formatted IEEE-style technical reports.
-*   **PPTX**: Ready-to-present PowerPoint slides with auto-formatting.
-*   **DOCX**: Fully editable Microsoft Word documents.
-*   **Patent Drafts**: Specialized formats for intellectual property documentation.
-
-### 🎙️ **Voice-First Experience**
-Built-in **Speech-to-Text (STT)** and **Text-to-Speech (TTS)** support. Talk to ASTHRA, and let it speak back to you!
-
-### 🎓 **Mass Certificate Generator**
-Need 100 certificates for a workshop? ASTHRA's custom designer lets you map data fields and generate PDFs at scale with stunning backgrounds.
-
-### 🌍 **Global & Multi-Lingual**
-Full UI support for:
-*   🇺🇸 English
-*   🇮🇳 Malayalam (മലയാളം)
-*   🇮🇳 Hindi (हिन्दी)
-*   🇪🇸 Spanish (Español)
+</div>
 
 ---
 
-## 🛠️ Tech Stack
+## Architectural Overview
 
-### **Frontend (Mobile & Web)**
-*   **Flutter**: For a buttery-smooth, responsive cross-platform experience.
-*   **Shimmer effects** & **SPIN-kits** for premium UI/UX.
-*   **FL Charts** for dynamic data visualization.
+ASTHRA bridges multi-model AI synthesis with deterministic document assembly engines. The cross-platform Flutter frontend transmits structural prompts and repository links to the asynchronous FastAPI backend, which coordinates LLM reasoning and compiles output into Microsoft Office and PDF deliverables.
 
-### **Backend (The Powerhouse)**
-*   **FastAPI**: Blazing fast Python implementation.
-*   **ReportLab**: Precision PDF engineering.
-*   **Python-Docx / PPTX**: Office-grade document manipulation.
+```mermaid
+flowchart TD
+    subgraph ClientLayer["Client Layer (Flutter Cross-Platform)"]
+        UI["Flutter UI (Web / Desktop / Mobile)"]
+        State["State Management & File Transfer"]
+    end
+
+    subgraph APILayer["API Gateway (FastAPI)"]
+        Router["FastAPI Application Router"]
+        RepoParser["GitHub Repository Scanner & AST Analyzer"]
+        PromptEngine["Context & Template Builder"]
+    end
+
+    subgraph LLMProviders["Multi-Provider LLM Orchestrator"]
+        OpenAI["OpenAI (GPT-4o / GPT-3.5)"]
+        Gemini["Google Gemini (Pro / Flash)"]
+        Bedrock["AWS Bedrock (Claude / Titan)"]
+        OpenRouter["OpenRouter (Llama 3 / Mistral)"]
+    end
+
+    subgraph GenerationEngines["Document Compilation Engines"]
+        DocxEngine["python-docx (DOCX Builder)"]
+        PptxEngine["python-pptx (Presentation Deck)"]
+        XlsxEngine["xlsxwriter (Spreadsheet Generator)"]
+    end
+
+    UI -->|HTTPS REST Request| Router
+    Router -->|Fetch Source Tree| RepoParser
+    RepoParser -->|Aggregated Code Context| PromptEngine
+    PromptEngine -->|Model Request| LLMProviders
+    LLMProviders -->|Structured Synthesized Content| Router
+    Router -->|Document Schema| GenerationEngines
+    GenerationEngines -->|Compiled Deliverable| UI
+```
 
 ---
 
-## 🚀 Getting Started
+## Core Capabilities
 
-### 1️⃣ Backend Setup
+- **Multi-Model LLM Orchestration**: Unified routing across OpenAI, Google Gemini, AWS Bedrock, and OpenRouter with automatic token context window calculation.
+- **Automated Repository Documentation**: Scans remote GitHub repositories, parses file trees, extracts architectural patterns, and synthesizes technical specification manuals.
+- **Native Office File Generation**: Directly compiles DOCX technical reports, PPTX presentation decks, and XLSX analytical datasets without third-party desktop dependencies.
+- **Cross-Platform Interface**: Responsive Flutter application running natively on Android, iOS, Windows, macOS, Linux, and modern web browsers.
+
+---
+
+## Technology Stack
+
+| Layer | Component | Description |
+| :--- | :--- | :--- |
+| **Frontend** | Flutter / Dart | Cross-platform UI, dynamic form rendering, and document viewer |
+| **Backend API** | FastAPI / Python 3.11+ | Asynchronous REST endpoints and request orchestration |
+| **AI Integration** | OpenAI, Google Gemini, AWS, OpenRouter | Multi-provider LLM prompt management and response streaming |
+| **Document Processing** | python-docx, python-pptx, xlsxwriter | Document binary generation and template population |
+| **Web Server** | Uvicorn | ASGI high-performance production server |
+
+---
+
+## Repository Structure
+
+```
+asthra/
+├── android/                 # Native Android packaging
+├── backend/                 # FastAPI backend service
+│   ├── app.py               # Main application entry point and endpoints
+│   ├── create_templates.py  # Office document template initializers
+│   ├── requirements.txt     # Python runtime dependencies
+│   └── templates/           # Document formatting templates
+├── ios/                     # Native iOS packaging
+├── lib/                     # Flutter frontend source
+├── linux/                   # Native Linux packaging
+├── macos/                   # Native macOS packaging
+├── pubspec.yaml             # Flutter package manifest
+├── web/                     # Web deployment assets
+└── windows/                 # Native Windows packaging
+```
+
+---
+
+## Local Development Setup
+
+### 1. Backend Service
+
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate  # Or venv\Scripts\activate on Windows
+
+# Create and activate a clean virtual environment
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install required packages
 pip install -r requirements.txt
-uvicorn app:app --reload
+
+# Configure environment keys
+export OPENAI_API_KEY="your-openai-key"
+export GEMINI_API_KEY="your-gemini-key"
+
+# Launch the FastAPI development server
+uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 2️⃣ Frontend Setup
+### 2. Frontend Application
+
 ```bash
+# Ensure Flutter SDK is installed and available in PATH
+flutter doctor
+
+# Fetch Dart dependencies
 flutter pub get
-flutter run -d chrome  # Or your emulator of choice
+
+# Run on your target platform (chrome, macos, windows, android)
+flutter run -d chrome
 ```
 
 ---
 
-## 🏗️ Project Structure
-```text
-asthra/
-├── backend/            # FastAPI Python server
-│   ├── app.py          # Core logic & AI orchestration
-│   └── requirements.txt
-├── lib/               # Flutter source code
-│   ├── pages/         # UI Screen Implementations
-│   ├── widgets/       # Reusable UI components
-│   └── services/      # Voice, AI, and Storage services
-└── web/               # Web-specific configurations
-```
+## API Endpoints Reference
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/generate/document` | Generates a DOCX technical report from user specifications |
+| `POST` | `/generate/presentation` | Compiles a formatted PPTX slide deck with AI-generated sections |
+| `POST` | `/analyze/github` | Clones or fetches repository trees and produces architecture summaries |
+| `GET` | `/download/{file_id}` | Serves compiled document binaries |
+| `GET` | `/health` | Health check endpoint returning runtime status |
 
 ---
 
-## 🤝 Contributing
-We love contributions! Feel free to fork the repo and submit PRs. Let's make ASTHRA even more powerful together! 🏹🔥
+## License
 
----
-
-## 📜 License
-This project is proprietary. Copyright (c) 2026 Midhun M. All rights reserved. See the [LICENSE](file:///d:/ai_doc_webapp/ai_doc_webapp/LICENSE) file for details.
-
----
-
-**Developed with ❤️ by the ASTHRA Team**
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for complete details.
